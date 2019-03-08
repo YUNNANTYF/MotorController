@@ -2,7 +2,7 @@
  *
  * FileName:        main.c
  * Processor:       PIC18F2550 / PIC18F2553
- * Compiler:        MPLAB® XC8 v2.00
+ * Compiler:        MPLABÂ® XC8 v2.00
  * Comment:         Main code
  * Dependencies:    Header (.h) files if applicable, see below
  *
@@ -27,7 +27,7 @@
  * Prototypes
  */
 void __interrupt (high_priority) high_ISR(void);   //high priority interrupt routine
-void __interrupt (low_priority) low_ISR(void);  //low priority interrupt routine, not used in this example
+void __interrupt (low_priority) low_ISR(void);  //low priority interrupt routine
 void initChip(void);
 void initTimer(void);
 unsigned int timerValue = 0;
@@ -65,7 +65,7 @@ void __interrupt (high_priority) high_ISR(void)
         
         TMR0H = 0xFB;
         TMR0L = 0xFF;
-        INTCONbits.TMR0IF=0;     //CLEAR interrupt flag when you are done!!!
+        INTCONbits.TMR0IF=0;     //CLEAR interrupt flag
      } 
     
     if(PIR1bits.SSPIF == 1){

@@ -1,38 +1,294 @@
-import socket
 
 import time
 
-GPIO_PIN = 24
+import Adafruit_ADS1x15
+
+import socket
+
+import RPi.GPIO as GPIO
+
 
 GPIO.setmode(GPIO.BCM)
-GPIO.setup(GPIO_PIN, GPIO.OUT)
 
-HOST = '192.168.10.103'
-PORT = 1234
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-sock.connect((HOST, PORT))
-time.sleep(2)
+
 while True:
 
 
+	GPIO.setup(17, GPIO.OUT, initial=GPIO.LOW)
 
-        command = raw_input('move ur joystick!')
+	GPIO.setup(27, GPIO.OUT, initial=GPIO.LOW)
 
-        GPIO.output(GPIO_PIN,GPIO.HIGH)
-        time.sleep(1)
-        GPIO.output(GPIO_PIN,GPIO.LOW)
-        time.sleep(1)
+	GPIO.setup(4, GPIO.IN)
 
-        while count > 0:
-        if(GPIO.input(GPIO_PIN) == 1):
-        count = count - 1
-        print("input high")
-        time.sleep(0.1)
+	GPIO.setup(22, GPIO.IN)
 
-        sock.send(command)
-        reply = sock.recv(1024)
-        GPIO.cleanup()
+	
+	while 1:
 
-if reply == 'Terminate':
-                break
-        print reply
+		GPIO.setup(27, GPIO.OUT, initial=GPIO.LOW)
+
+		time.sleep(0.5)
+
+		if GPIO.input(22) == GPIO.LOW:
+
+			print("left is low"
+)
+			break
+
+		else:
+
+			GPIO.setup(27, GPIO.OUT, initial=GPIO.HIGH)
+
+			time.sleep(0.5)
+
+			continue
+
+	#loop to see if left has switched
+	HOST = '192.168.0.10'
+
+	PORT = 52832
+
+	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+
+	while True:
+
+		#s.connect((HOST,PORT))
+
+                                #print("connected?")
+
+		if s.connect_ex((HOST,PORT)) == 0:
+
+			GPIO.setup(27,GPIO.OUT, initial=GPIO.HIGH)
+
+			print("connected")
+
+			break
+		else:
+
+			print("connection failed")
+
+			time.sleep(0.1)
+
+			continue
+
+	
+	# Create an ADS1115 ADC (16-bit) instance.
+
+	# adc = Adafruit_ADS1x15.ADS1115()
+
+	
+	# Or create an ADS1015 ADC (12-bit) instance.
+
+	adc = Adafruit_ADS1x15.ADS1015()
+
+	
+	# Note you can change the I2C address from its default (0x48), and/or the I2C
+
+	# bus by passing in these optional parameters:
+
+	#adc = Adafruit_ADS1x15.ADS1015(address=0x49, busnum=1)
+
+	
+	# Choose a gain of 1 for reading voltages from 0 to 4.09V.
+
+	# Or pick a different gain to change the range of voltages that are read:
+
+	#  - 2/3 = +/-6.144V
+
+	#  -   1 = +/-4.096V
+
+	#  -   2 = +/-2.048V
+
+	#  -   4 = +/-1.024V
+
+	#  -   8 = +/-0.512V
+
+	#  -  16 = +/-0.256V
+
+	# See table 3 in the ADS1015/ADS1115 datasheet for more info on gain.
+
+	GAIN = 1
+
+	
+	print('Reading ADS1x15 values, press Ctrl-C to quit...')
+
+	# Print nice channel column headers.
+
+	print('| {0:>6} | {1:>6} | {2:>6} | {3:>6} |'.format(*range(4)))
+
+	print('-' * 37)
+
+	# Main loop.
+
+	counterXU = 0
+
+	counterXD = 0
+
+	counterYR = 0
+
+	counterYL = 0
+
+	while True:
+
+	    # Read all the ADC channel values in a list.
+
+	    values = [0]*4
+
+	    valuessent = [0]*4
+
+	    for i in range(4):
+
+	        # Read the specified ADC channel using the previously set gain value.
+
+	        values[i] = adc.read_adc(i, gain=GAIN)
+
+	        # Note you can also pass in an optional data_rate parameter that controls
+
+	        # the ADC conversion time (in samples/second). Each chip has a different
+
+	        # set of allowed data rate values, see datasheet Table 9 config register
+
+	        # DR bit values.
+
+	        #values[i] = adc.read_adc(i, gain=GAIN, data_rate=128)
+
+	        # Each value will be a 12 or 16 bit signed integer value depending on the
+
+	        # ADC (ADS1015 = 12-bit, ADS1115 = 16-bit).
+
+	    #regulate the  data
+ 
+	    #recalculate data
+
+	    if (values[i]>1648):
+
+	        values[i]=1648
+
+	    if (values[i]<0):
+
+	        values[i]=0
+
+	    valuessent[0] = int(0.1212*(values[0]-823))
+
+	    valuessent[1] = int(-0.1213*(values[1]-816))
+
+	    valuessent[2] = int(-0.1252*(values[2]-848))
+
+	    valuessent[3] = int(0.1213*(values[3]-823))
+
+	    if (valuessent[i]>100):
+
+	        valuessent[i]=100
+
+	    if (valuessent[i]<-100):
+
+	        valuessent[i]=-100
+
+	    #below is code for left (trimming)
+
+	    #counterXU = 0
+
+	    #counterXD = 0
+
+	    #counterYL = 0
+
+	    #counterYR = 0
+
+            if (valuessent[1] > 90):
+
+	counterXU = counterXU + 1
+
+            if (counterXU == 5):
+
+	 s.sendall('TRR'+'\n')
+
+            if (-10 < valuessent[1] < 10):
+
+	 counterXU = 0
+
+
+            if (valuessent[1] < -90):
+ 
+               counterXD = counterXD + 1
+
+            if (counterXD == 5):
+
+                s.sendall('TRL'+'\n')
+
+            if (-10 < valuessent[1] < 10):
+ 
+               counterXD = 0
+
+
+            if (valuessent[0] > 90):
+ 
+               counterYR = counterYR + 1
+
+            if (counterYR == 5):
+ 
+               s.sendall('TRU'+'\n')
+
+            if (-10 < valuessent[0] < 10):
+
+                counterYR = 0
+
+
+	    if (valuessent[0] <- 90):
+ 
+               counterYL = counterYL + 1
+
+            if (counterYL == 5):
+
+                s.sendall('TRD'+'\n')
+
+            if (-10 < valuessent[0] < 10):
+
+                counterYL = 0
+
+	    
+	    # Print the ADC values.
+
+	    print('| {0:>6} | {1:>6} | {2:>6} | {3:>6} |'.format(*valuessent))
+
+	    # Pause for half a second.
+
+	    #no need left data
+
+	    #s.sendall('JX1 ')
+
+	    #s.sendall(str(valuessent[1]))
+
+	    #s.sendall(' JY1 ')
+
+	    #s.sendall(str(valuessent[0]))
+
+	    #s.sendall(' \n')
+
+	    s.sendall('JX2 ')
+
+	    s.sendall(str(valuessent[2]))
+
+	    s.sendall(' JY2 ')
+
+	    s.sendall(str(valuessent[3]))
+
+	    s.sendall(' \n')
+
+	
+	    if GPIO.input(4) == GPIO.LOW:
+
+			print("right switched == tcp disconnected")
+
+			s.close()
+
+			break
+
+	    else:
+
+			time.sleep(0.01)
+
+			continue
+	    
+
+
